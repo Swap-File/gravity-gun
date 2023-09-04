@@ -22,6 +22,20 @@ MeterWidget volts = MeterWidget(&tft);
 
 #define TFT_BL 0
 
+static uint32_t start_time = 0;
+
+bool gauge_render_time_check(void)
+{
+    if (millis() - start_time > 4)
+        return true;
+    return false;
+}
+
+static inline void gauge_render_time_reset(void)
+{
+    start_time = millis();
+}
+
 void gauge_init(void)
 {
     pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -76,6 +90,7 @@ void gauge_update(void)
         else
             analogWrite(BUTTON_LED_PIN, 255);
 
+        gauge_render_time_reset();
         if (pin)
         {
             if (screensaver == false)
@@ -92,24 +107,34 @@ void gauge_update(void)
             {
                 screensaver = false;
                 logo_reset();
+                volts.analogMeterDrawReset();
+                throttle.analogMeterDrawReset();
             }
+
             if (logo_blank(&tft))
             {
-                if (alternate_update)
+                if (throttle.analogMeterDraw() && volts.analogMeterDraw())
                 {
-                    // Serial.print("I = "); Serial.print(current);
-                    throttle.updateNeedle(value, value);
-                }
-                else
-                {
-                    float voltage;
-                    voltage = mapValue(value, (float)0.0, (float)100.0, (float)0.0, (float)10.0);
-                    float voltage2 = mapValue(value, (float)100.0, (float)0.0, (float)0.0, (float)10.0);
-                    // Serial.print(", V = "); Serial.println(voltage);
-                    volts.updateNeedle(voltage, voltage2);
-                }
-                alternate_update = !alternate_update;
+                        if (alternate_update)
+                        {
+                            throttle.updateNeedle(value, value);
+                        }
+                        else
+                        {
+                            float voltage;
+                            voltage = mapValue(value, (float)0.0, (float)100.0, (float)0.0, (float)10.0);
+                            float voltage2 = mapValue(value, (float)100.0, (float)0.0, (float)0.0, (float)10.0);
+                            volts.updateNeedle(voltage, voltage2);
+                        }
+                        alternate_update = !alternate_update;
+                    } 
             }
+        }
+        uint32_t time_spent = millis() - start_time;
+        if (time_spent > 5)
+        {
+            Serial.print(time_spent);
+            Serial.println(" Too Long!");
         }
     }
 }

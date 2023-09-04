@@ -1,6 +1,7 @@
 
 #include <GC9A01A_t3n.h>
 #include "font_consola.h"
+#include "gauge.h"
 
 const char *black_mesa[20] = {
     "           .-;+$XHHHHHHX$+;-.           ",
@@ -24,62 +25,44 @@ const char *black_mesa[20] = {
     "        ,;$@@@@@@@@@@@@@@@@@@X/-        ",
     "           .-;+$XXHHHHHX$+;-.           "};
 
-static int x = 0;
-static int y = 0;
-
 static int blanked = 0;
-
-static uint32_t start_time = 0;
-
-static bool logo_time_check(void)
-{
-   if (millis() - start_time > 4)
-      return true;
-   return false;
-}
 
 bool logo_blank(GC9A01A_t3n *tft)
 {
 
-   start_time = millis();
-   while (blanked < 121) // blank the screen if needed
+   while (blanked <= (tft->height() / 2)) // blank the screen if needed
    {
-      tft->drawFastHLine(0, blanked, 240, BLACK);
-      tft->drawFastHLine(0, 240 - blanked, 240, BLACK);
-      blanked++;
-      if (logo_time_check())
+      if (gauge_render_time_check())
          return false;
+
+      tft->drawFastHLine(0, blanked, tft->width(), BLACK);
+      tft->drawFastHLine(0, tft->height() - blanked, tft->width(), BLACK);
+      blanked++;
    }
-   if (blanked < 121)
-      return false;
 
    return true;
 }
 
 void logo_update(GC9A01A_t3n *tft)
 {
-   start_time = millis();
    tft->setFont(Consolas_7);
 
-   while (1) // this will always spend ~5ms rendering the logo
+   while (1)
    {
-      tft->setCursor(0, y * 11 + 20, true);
-      for (x = 0; x < 40; x++)
-      {
+      int x = random(40);
+      int y = random(20);
 
-         if (random(5) == 0)
-            tft->setTextColor(random(0xFFFF));
-         else
-            tft->setTextColor(WHITE);
+      tft->setCursor(4 + x * 6, y * 11 + 20, true);
 
-         tft->print(black_mesa[y][x]);
-      }
-      y++;
-      if (y >= 20)
-         y = 0;
+      if (random(5) == 0)
+         tft->setTextColor(random(0xFFFF));
+      else
+         tft->setTextColor(WHITE);
 
-      if (logo_time_check())
-         break;
+      tft->print(black_mesa[y][x]);
+
+      if (gauge_render_time_check())
+         return;
    }
 }
 

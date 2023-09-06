@@ -19,7 +19,7 @@ public:
   void updateNeedle(float value, float value2);
   bool analogMeterDraw(void);
   void analogMeterDrawReset(void);
-
+  void updateText(const char *label);
 private:
   // Pointer to TFT_eSPI class functions
   GC9A01A_t3n *ntft;
@@ -27,11 +27,9 @@ private:
   float ltx;           // x delta of needle start
   uint16_t osx, osy;   // Saved x & y coords of needle end
   int old_analog;      // Value last displayed
-  int old_digital;     // Value last displayed
   float ltx2;          // x delta of needle start
   uint16_t osx2, osy2; // Saved x & y coords of needle end
   int old_analog2;     // Value last displayed
-  int old_digital2;    // Value last displayed
 
   // x, y coord of top left corner of meter graphic
   uint16_t mx;
@@ -76,6 +74,7 @@ private:
   bool complete = false;
   int i = -50;
   bool first = true;
+  bool text = false;
 };
 
 #endif

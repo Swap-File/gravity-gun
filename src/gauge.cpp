@@ -1,11 +1,9 @@
 #include <SPI.h>
 #include <GC9A01A_t3n.h>
-
+#include "font_LiberationMono.h"
 #include "meter.h"
 #include "logo.h"
-
-#define BUTTON_LED_PIN 23
-#define BUTTON_PIN 22
+#include "gauge.h"
 
 #define LOOP_PERIOD 10 // Display updates every 35 ms
 
@@ -20,9 +18,12 @@ GC9A01A_t3n tft = GC9A01A_t3n(TFT_CS, TFT_DC, TFT_RST, TFT_MOSI, TFT_SCK);
 MeterWidget throttle = MeterWidget(&tft);
 MeterWidget volts = MeterWidget(&tft);
 
-#define TFT_BL 0
-
 static uint32_t start_time = 0;
+
+void gauge_throttle_text(char *input)
+{
+    throttle.updateText(input);
+}
 
 bool gauge_render_time_check(void)
 {
@@ -38,10 +39,6 @@ static inline void gauge_render_time_reset(void)
 
 void gauge_init(void)
 {
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-
-    pinMode(TFT_BL, OUTPUT);
-    analogWrite(TFT_BL, 1023);
 
     tft.begin();
     tft.setRotation(0);
@@ -56,11 +53,11 @@ void gauge_init(void)
 
     //            --Red--  -Org-   -Yell-  -Grn-
     throttle.setZones(75, 100, 50, 75, 25, 50, 0, 25);
-    throttle.analogMeter(0, 16, 100, "Output", "0", "25", "50", "75", "100");
+    throttle.analogMeter(0, 16, 100, "Locked", "0", "25", "50", "75", "100");
 
     //            --Red--  -Org-   -Yell-  -Grn-
     volts.setZones(0, 25, 25, 50, 50, 75, 75, 100);
-    volts.analogMeter(0, 126, 10.0, "Volts", "10", "12", "14", "16", "18");
+    volts.analogMeter(0, 126, 100, "Volts", "10", "12", "14", "16", "18");
 }
 
 float mapValue(float ip, float ipmin, float ipmax, float tomin, float tomax)
@@ -68,30 +65,20 @@ float mapValue(float ip, float ipmin, float ipmax, float tomin, float tomax)
     return tomin + (((tomax - tomin) * (ip - ipmin)) / (ipmax - ipmin));
 }
 
-bool screensaver = false;
-void gauge_update(void)
+void gauge_update(const Gravity_Gun *gun)
 {
-    static int d = 0;
+
+    static bool screensaver = false;
     static uint32_t updateTime = 0;
     static bool alternate_update = false;
 
     if (millis() - updateTime >= LOOP_PERIOD)
     {
-        d += 4;
-        if (d > 360)
-            d = 0;
 
-        // Create a Sine wave for testing, value is in range 0 - 100
-        float value = 50.0 + 50.0 * sin((d + 0) * 0.0174532925);
         updateTime = millis();
-        bool pin = digitalRead(BUTTON_PIN);
-        if (pin)
-            analogWrite(BUTTON_LED_PIN, mapValue(value, (float)0.0, (float)100.0, (float)0.0, (float)255.0));
-        else
-            analogWrite(BUTTON_LED_PIN, 255);
 
         gauge_render_time_reset();
-        if (pin)
+        if (gun->screensaver_on)
         {
             if (screensaver == false)
             {
@@ -115,19 +102,35 @@ void gauge_update(void)
             {
                 if (throttle.analogMeterDraw() && volts.analogMeterDraw())
                 {
-                        if (alternate_update)
-                        {
-                            throttle.updateNeedle(value, value);
-                        }
+                    if (alternate_update)
+                    {
+                        throttle.updateNeedle(gun->throttle_output, gun->throttle_output);
+
+                        tft.setCursor(220, 120, true);
+                        tft.setTextColor(WHITE, BLACK);
+                        tft.setFont(LiberationMono_10);
+                        if (gun->battery_voltage1 < 10)
+                            tft.printf(" %.1fV", gun->battery_voltage1);
                         else
-                        {
-                            float voltage;
-                            voltage = mapValue(value, (float)0.0, (float)100.0, (float)0.0, (float)10.0);
-                            float voltage2 = mapValue(value, (float)100.0, (float)0.0, (float)0.0, (float)10.0);
-                            volts.updateNeedle(voltage, voltage2);
-                        }
-                        alternate_update = !alternate_update;
-                    } 
+                            tft.printf("%.1fV", gun->battery_voltage1);
+                    }
+                    else
+                    {
+                        float voltage = mapValue(gun->battery_voltage1, (float)10.0, (float)18.0, (float)0.0, (float)100.0);
+                        float voltage2 = mapValue(gun->battery_voltage2, (float)10.0, (float)18.0, (float)0.0, (float)100.0);
+                        volts.updateNeedle(voltage, voltage2);
+
+                        tft.setCursor(20, 120, true);
+                        tft.setTextColor(WHITE, BLACK);
+                        tft.setFont(LiberationMono_10);
+                        float result = gun->battery_voltage1 - gun->battery_voltage2;
+                        if (result < 0)
+                            tft.printf("%.1fV", result);
+                        else
+                            tft.printf(" %.1fV", result);
+                    }
+                    alternate_update = !alternate_update;
+                }
             }
         }
         uint32_t time_spent = millis() - start_time;

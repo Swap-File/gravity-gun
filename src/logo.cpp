@@ -57,7 +57,7 @@ void logo_update(GC9A01A_t3n *tft)
       if (random(5) == 0)
          tft->setTextColor(random(0xFFFF));
       else
-         tft->setTextColor(WHITE);
+         tft->setTextColor(LIGHTGREY);
 
       tft->print(black_mesa[y][x]);
 

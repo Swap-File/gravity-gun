@@ -2,6 +2,7 @@
 #include "meter.h"
 #include "GC9A01A_t3n_font_ArialBold.h"
 #include "GC9A01A_t3n_font_Arial.h"
+#include "font_LiberationMono.h"
 #include "gauge.h"
 
 // #########################################################################
@@ -12,9 +13,7 @@ MeterWidget::MeterWidget(GC9A01A_t3n *tft)
   ltx = 0;              // Saved x coord of bottom of needle
   osx = 120, osy = 120; // Saved x & y coords
   old_analog = 0;       // Value last displayed
-  old_digital = 0;      // Value last displayed
   old_analog2 = 0;      // Value last displayed
-  old_digital2 = 0;     // Value last displayed
   mx = 0;
   my = 0;
 
@@ -44,7 +43,10 @@ MeterWidget::MeterWidget(GC9A01A_t3n *tft)
 void MeterWidget::analogMeterDrawReset(void)
 {
   complete = false;
+  first = true;
   i = -50;
+  old_analog2 = -1;
+  old_analog = -1;
 }
 
 bool MeterWidget::analogMeterDraw(void)
@@ -171,7 +173,6 @@ bool MeterWidget::analogMeterDraw(void)
   }
 
   ntft->setFont(Arial_18_Bold);
-  // ntft->drawString(mlabel, x + 5 + 230 - 40, y + 119 - 20, 2); // Units at bottom right
   ntft->drawString(mlabel, x_local + 120, y_local + 70); // Comment out to avoid font 4
 
   complete = true;
@@ -196,6 +197,12 @@ void MeterWidget::analogMeter(uint16_t x, uint16_t y, float fullScale, const cha
   strncpy(ms2, s2, 4);
   strncpy(ms3, s3, 4);
   strncpy(ms4, s4, 4);
+}
+
+void MeterWidget::updateText(const char *label) // only change this at zero scale so we don't collide with the needle.
+{
+  strncpy(mlabel, label, 8);
+  text = true;
 }
 
 // #########################################################################
@@ -256,42 +263,51 @@ void MeterWidget::updateNeedle(float val, float val2)
     }
   }
   // Re-plot text under needle
-  if (old_analog != value || old_analog2 != value2)
+  if (old_analog != value || old_analog2 != value2 || text)
   {
+    if (text)
+    
+     ntft->setTextColor(WHITE,BLACK);
+    else
     ntft->setTextColor(WHITE);
     ntft->setFont(Arial_18_Bold);
-    ntft->drawString(mlabel, mx + 120, my + 70); // // Comment out to avoid font 4
+    ntft->drawString(mlabel, mx + 120, my + 70);
   }
-
-  // Store new needle end coords for next erase
-  ltx = tx;
-  osx = sx * 98 + 120;
-  osy = sy * 98 + 140;
-
-  // Store new needle end coords for next erase
-  ltx2 = tx2_local;
-  osx2 = sx2_local * 98 + 120;
-  osy2 = sy2_local * 98 + 140;
 
   // Draw the needle in the new position, magenta makes needle a bit bolder
   // draws 3 lines to thicken needle
-  if (old_analog != value)
+  if (old_analog != value || first || text)
   {
+    // Store new needle end coords for next erase
+    ltx = tx;
+    osx = sx * 98 + 120;
+    osy = sy * 98 + 140;
+
     ntft->drawLine(mx + 120 + 30 * ltx - 1, my + 140 - 30, mx + osx - 1, my + osy, RED);
     ntft->drawLine(mx + 120 + 30 * ltx, my + 140 - 30, mx + osx, my + osy, MAGENTA);
     ntft->drawLine(mx + 120 + 30 * ltx + 1, my + 140 - 30, mx + osx + 1, my + osy, RED);
+    old_analog = value;
+    if (value != value2)
+      old_analog2 = -1;
   }
+
   // Draw the needle in the new position, magenta makes needle a bit bolder
   // draws 3 lines to thicken needle
-  if (old_analog2 != value2 && value2 != value)
+  if (old_analog2 != value2 || first|| text)
   {
+    // Store new needle end coords for next erase
+    ltx2 = tx2_local;
+    osx2 = sx2_local * 98 + 120;
+    osy2 = sy2_local * 98 + 140;
+
     ntft->drawLine(mx + 120 + 30 * ltx2 - 1, my + 140 - 30, mx + osx2 - 1, my + osy2, RED);
     ntft->drawLine(mx + 120 + 30 * ltx2, my + 140 - 30, mx + osx2, my + osy2, MAGENTA);
     ntft->drawLine(mx + 120 + 30 * ltx2 + 1, my + 140 - 30, mx + osx2 + 1, my + osy2, RED);
+
+    old_analog2 = value2;
   }
+  text = false;
   first = false;
-  old_analog = value;
-  old_analog2 = value2;
 }
 
 // #########################################################################

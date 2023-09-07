@@ -20,14 +20,14 @@ struct Pixels
   int y_step;
   uint32_t spawn_time;
   uint32_t speed;
-  uint32_t next_time;
+  uint32_t last_time;
   uint32_t tip_time;
   int tip_pos;
   bool active;
   uint8_t hue;
 } ;
 
-void effects_update(void);
+void effects_update(float throttle);
 void effects_init(void);
 
 #endif

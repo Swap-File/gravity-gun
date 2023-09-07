@@ -15,7 +15,9 @@ struct Gravity_Gun
 
   float throttle_input = 0.0;
   float throttle_output = 0.0;
+    float animation_output = 0.0;
   
+
   bool screensaver_on = true;
   bool locked = true;
 

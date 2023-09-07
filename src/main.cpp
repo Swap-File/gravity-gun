@@ -19,14 +19,13 @@ void setup(void)
   io_init();
   gauge_init();
   effects_init();
-  pinMode(A3,INPUT);
 }
 
 void loop()
 {
   io_update();
   gauge_update(&gun);
-  effects_update();
+  effects_update(gun.animation_output);
 
   // Render
   for (int i = 0; i < NUM_LEDS_X_PHY; i++)

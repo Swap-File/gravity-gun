@@ -62,7 +62,10 @@ void io_update(void)
     }
 
     int raw = analogRead(THROTTLE_PIN);
-    float reading = constrain(map(raw, 150, 950, 0, 100), 0, 100);
+    static int filtered = 0;
+    filtered = filtered * .9 + raw * .1;
+   // Serial.println(raw);
+    float reading = constrain(map(filtered, 275, 750, 0, 100), 0, 100);
     gun.throttle_input = gun.throttle_input * .7 + reading * .3;
 
     // unlock
@@ -128,6 +131,12 @@ void io_update(void)
         gun.throttle_output = 0;
     else
         gun.throttle_output = gun.throttle_input;
+
+
+    if (gun.button_input && !gun.locked &&  gun.throttle_input >= 0.5)
+        gun.animation_output =  gun.throttle_input / 2;
+    else
+        gun.animation_output = 0;
 
     // low battery alarm
 

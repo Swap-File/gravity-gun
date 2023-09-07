@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "meter.h"
 #include "GC9A01A_t3n_font_ArialBold.h"
-#include "GC9A01A_t3n_font_Arial.h"
 #include "font_LiberationMono.h"
 #include "gauge.h"
 
@@ -19,7 +18,7 @@ MeterWidget::MeterWidget(GC9A01A_t3n *tft)
 
   factor = 1.0;
 
-  mlabel[8] = '\0';
+  mlabel[10] = '\0';
 
   // Defaults
   strncpy(ms0, "0", 4);
@@ -201,8 +200,11 @@ void MeterWidget::analogMeter(uint16_t x, uint16_t y, float fullScale, const cha
 
 void MeterWidget::updateText(const char *label) // only change this at zero scale so we don't collide with the needle.
 {
-  strncpy(mlabel, label, 8);
-  text = true;
+  if (strncmp(mlabel, label, 10) != 0)
+  {
+    strncpy(mlabel, label, 10);
+    update_text = true;
+  }
 }
 
 // #########################################################################
@@ -263,20 +265,20 @@ void MeterWidget::updateNeedle(float val, float val2)
     }
   }
   // Re-plot text under needle
-  if (old_analog != value || old_analog2 != value2 || text)
+  if (old_analog != value || old_analog2 != value2 || update_text)
   {
-    if (text)
-    
-     ntft->setTextColor(WHITE,BLACK);
+    if (update_text)
+      ntft->setTextColor(WHITE, BLACK);
     else
-    ntft->setTextColor(WHITE);
+      ntft->setTextColor(WHITE);
+
     ntft->setFont(Arial_18_Bold);
     ntft->drawString(mlabel, mx + 120, my + 70);
   }
 
   // Draw the needle in the new position, magenta makes needle a bit bolder
   // draws 3 lines to thicken needle
-  if (old_analog != value || first || text)
+  if (old_analog != value || first || update_text)
   {
     // Store new needle end coords for next erase
     ltx = tx;
@@ -293,7 +295,7 @@ void MeterWidget::updateNeedle(float val, float val2)
 
   // Draw the needle in the new position, magenta makes needle a bit bolder
   // draws 3 lines to thicken needle
-  if (old_analog2 != value2 || first|| text)
+  if (old_analog2 != value2 || first || update_text)
   {
     // Store new needle end coords for next erase
     ltx2 = tx2_local;
@@ -306,7 +308,7 @@ void MeterWidget::updateNeedle(float val, float val2)
 
     old_analog2 = value2;
   }
-  text = false;
+  update_text = false;
   first = false;
 }
 

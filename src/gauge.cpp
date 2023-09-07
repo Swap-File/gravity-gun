@@ -1,6 +1,5 @@
 #include <SPI.h>
 #include <GC9A01A_t3n.h>
-#include "font_LiberationMono.h"
 #include "meter.h"
 #include "logo.h"
 #include "gauge.h"
@@ -20,10 +19,17 @@ MeterWidget volts = MeterWidget(&tft);
 
 static uint32_t start_time = 0;
 
-void gauge_throttle_text(char *input)
+void gauge_throttle_text(const char *input)
 {
     throttle.updateText(input);
 }
+
+
+void gauge_volts_text(const char *input)
+{
+    volts.updateText(input);
+}
+
 
 bool gauge_render_time_check(void)
 {
@@ -106,28 +112,12 @@ void gauge_update(const Gravity_Gun *gun)
                     {
                         throttle.updateNeedle(gun->throttle_output, gun->throttle_output);
 
-                        tft.setCursor(220, 120, true);
-                        tft.setTextColor(WHITE, BLACK);
-                        tft.setFont(LiberationMono_10);
-                        if (gun->battery_voltage1 < 10)
-                            tft.printf(" %.1fV", gun->battery_voltage1);
-                        else
-                            tft.printf("%.1fV", gun->battery_voltage1);
                     }
                     else
                     {
                         float voltage = mapValue(gun->battery_voltage1, (float)10.0, (float)18.0, (float)0.0, (float)100.0);
                         float voltage2 = mapValue(gun->battery_voltage2, (float)10.0, (float)18.0, (float)0.0, (float)100.0);
                         volts.updateNeedle(voltage, voltage2);
-
-                        tft.setCursor(20, 120, true);
-                        tft.setTextColor(WHITE, BLACK);
-                        tft.setFont(LiberationMono_10);
-                        float result = gun->battery_voltage1 - gun->battery_voltage2;
-                        if (result < 0)
-                            tft.printf("%.1fV", result);
-                        else
-                            tft.printf(" %.1fV", result);
                     }
                     alternate_update = !alternate_update;
                 }

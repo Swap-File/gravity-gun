@@ -39,7 +39,7 @@ private:
   float factor;
 
   // Scale label
-  char mlabel[9];
+  char mlabel[10];
 
   // Scale values
   char ms0[5];
@@ -74,7 +74,7 @@ private:
   bool complete = false;
   int i = -50;
   bool first = true;
-  bool text = false;
+  bool update_text = false;
 };
 
 #endif

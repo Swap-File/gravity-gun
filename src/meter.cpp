@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "meter.h"
+#include "font_Arial-BoldMT.h"
 #include "GC9A01A_t3n_font_ArialBold.h"
-#include "font_LiberationMono.h"
 #include "gauge.h"
 
 // #########################################################################
@@ -18,7 +18,7 @@ MeterWidget::MeterWidget(GC9A01A_t3n *tft)
 
   factor = 1.0;
 
-  mlabel[10] = '\0';
+  mlabel[11] = '\0';
 
   // Defaults
   strncpy(ms0, "0", 4);
@@ -171,9 +171,6 @@ bool MeterWidget::analogMeterDraw(void)
     i += 5;
   }
 
-  ntft->setFont(Arial_18_Bold);
-  ntft->drawString(mlabel, x_local + 120, y_local + 70); // Comment out to avoid font 4
-
   complete = true;
   return true;
 }
@@ -272,7 +269,7 @@ void MeterWidget::updateNeedle(float val, float val2)
     else
       ntft->setTextColor(WHITE);
 
-    ntft->setFont(Arial_18_Bold);
+    ntft->setFont(Arial_18_Delta);
     ntft->drawString(mlabel, mx + 120, my + 70);
   }
 

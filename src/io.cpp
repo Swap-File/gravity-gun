@@ -33,7 +33,7 @@ void io_update(void)
     //}
 
     volatile float read_voltage;
-    read_voltage = 15 + (exp(sin(millis() / 2000.0 * PI)) - 0.36787944) - gun.throttle_input / 100;
+    read_voltage = 14 + (exp(sin(millis() / 2000.0 * PI)) - 0.36787944) - gun.throttle_input / 100;
 
     bool double_needle;
 
@@ -88,22 +88,22 @@ void io_update(void)
     }
 
     // handle bottom meter text
-    char voltage[10];
+    char voltage[11];
 
     if (!double_needle)
     {
         if (((int)gun.battery_voltage1) >= 10)
-            sprintf(voltage, " %.1f V", gun.battery_voltage1);
+            sprintf(voltage, "  %.1f V  ", gun.battery_voltage1);
         else
-            sprintf(voltage, "  %.1f V", gun.battery_voltage1);
+            sprintf(voltage, "   %.1f V  ", gun.battery_voltage1);
     }
     else
     {
         float result = gun.battery_voltage1 - gun.battery_voltage2;
         if (result < 0)
-            sprintf(voltage, "  %.1f V ", result);
+            sprintf(voltage, "  %.1f ^V ", result);
         else
-            sprintf(voltage, "   %.1f V ", result);
+            sprintf(voltage, "  %.1f ^V ", result);
     }
     gauge_volts_text(voltage);
 

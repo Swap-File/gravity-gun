@@ -39,7 +39,7 @@ private:
   float factor;
 
   // Scale label
-  char mlabel[10];
+  char mlabel[11];
 
   // Scale values
   char ms0[5];

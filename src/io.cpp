@@ -1,20 +1,52 @@
 #include <Arduino.h>
+#include <ADC.h>
+
 #include "io.h"
 #include "gauge.h"
+#include "PWMServo.h"
 
 #define TFT_BL 0
 #define BUTTON_LED_PIN 23
 #define BUTTON_PIN 22
 #define THROTTLE_PIN A3
+#define BUTTON_PIN 22
+#define SERVO_PIN 3
+#define BATTERY_VOLTAGE_PIN A5
+
 Gravity_Gun gun;
+
+PWMServo myservo; // create servo object to control a servo
+
+ADC *adc = new ADC();
 
 void io_init(void)
 {
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     pinMode(BUTTON_LED_PIN, OUTPUT);
-    pinMode(THROTTLE_PIN, INPUT);
     pinMode(TFT_BL, OUTPUT);
+    pinMode(BUTTON_LED_PIN, OUTPUT);
+
+    // ADC0 setup
+    pinMode(BATTERY_VOLTAGE_PIN, INPUT);
+    adc->adc0->setAveraging(32);
+    adc->adc0->setResolution(16);
+    adc->adc0->setConversionSpeed(ADC_CONVERSION_SPEED::VERY_LOW_SPEED);
+    adc->adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED);
+    adc->adc0->startContinuous(BATTERY_VOLTAGE_PIN);
+
+    pinMode(THROTTLE_PIN, INPUT);
+    adc->adc1->setAveraging(32);
+    adc->adc1->setResolution(16);
+    adc->adc1->setConversionSpeed(ADC_CONVERSION_SPEED::VERY_LOW_SPEED);
+    adc->adc1->setSamplingSpeed(ADC_SAMPLING_SPEED::MED_SPEED);
+    adc->adc1->startContinuous(THROTTLE_PIN);
+
     analogWrite(TFT_BL, 1023);
+
+    myservo.attach(SERVO_PIN);
+    myservo.write(0);
+    delay(100);
+    myservo.write(90);
 }
 
 static float saved_level = 0.0;
@@ -32,8 +64,12 @@ void io_update(void)
     //     gun.battery_voltage2 = gun.battery_voltage1;
     //}
 
-    volatile float read_voltage;
-    read_voltage = 14 + (exp(sin(millis() / 2000.0 * PI)) - 0.36787944) - gun.throttle_input / 100;
+    static float raw_voltage = 0;
+    float read_voltage;
+    raw_voltage = raw_voltage * .96 + .04 *  (uint16_t)adc->adc0->analogReadContinuous();
+    // absolute calibration at 12v -> 41530  ( divide by 3460)
+    // then corrected slope at 16v
+    read_voltage = (raw_voltage / 3460) + (((raw_voltage / 3460) - 12) /15) ;
 
     bool double_needle;
 
@@ -61,11 +97,12 @@ void io_update(void)
         last_time = millis();
     }
 
-    int raw = analogRead(THROTTLE_PIN);
+    int raw = (uint16_t)adc->adc1->analogReadContinuous();
+
     static int filtered = 0;
     filtered = filtered * .9 + raw * .1;
-   // Serial.println(raw);
-    float reading = constrain(map(filtered, 275, 750, 0, 100), 0, 100);
+    // Serial.println(raw);
+    float reading = constrain(map(filtered, 16000, 49500, 0, 100), 0, 100);
     gun.throttle_input = gun.throttle_input * .7 + reading * .3;
 
     // unlock
@@ -79,6 +116,17 @@ void io_update(void)
         gun.locked = false;
 
         released = true;
+    }
+
+    if (gun.locked == false && gun.button_input)
+    {
+        int output = constrain(map(gun.throttle_input, 0, 100, 92, 120), 92, 120);
+
+        myservo.write(output);
+    }
+    else
+    {
+        myservo.write(90);
     }
 
     // handle top meter text
@@ -119,7 +167,7 @@ void io_update(void)
         gun.screensaver_on = false;
     }
 
-    if (millis() - last_motion_time > 10000 && gun.screensaver_on == false)
+    if (millis() - last_motion_time > 20000 && gun.screensaver_on == false)
     {
         gun.screensaver_on = true;
         gun.locked = true;
@@ -132,9 +180,8 @@ void io_update(void)
     else
         gun.throttle_output = gun.throttle_input;
 
-
-    if (gun.button_input && !gun.locked &&  gun.throttle_input >= 0.5)
-        gun.animation_output =  gun.throttle_input / 2;
+    if (gun.button_input && !gun.locked)
+        gun.animation_output = 20 + gun.throttle_input / 6;
     else
         gun.animation_output = 0;
 

@@ -13,6 +13,9 @@
 #define SERVO_PIN 3
 #define BATTERY_VOLTAGE_PIN A5
 
+#define TIME_TO_HOLD_THE_DIP 5000
+#define TIME_BEFORE_SCREENSAVER 20000
+
 Gravity_Gun gun;
 
 PWMServo myservo; // create servo object to control a servo
@@ -66,37 +69,39 @@ void io_update(void)
 
     static float raw_voltage = 0;
     float read_voltage;
-    raw_voltage = raw_voltage * .96 + .04 *  (uint16_t)adc->adc0->analogReadContinuous();
-    // absolute calibration at 12v -> 41530  ( divide by 3460)
-    // then corrected slope at 16v
-    read_voltage = (raw_voltage / 3460) + (((raw_voltage / 3460) - 12) /15) ;
+    raw_voltage = raw_voltage * .96 + .04 * (uint16_t)adc->adc0->analogReadContinuous();  // .04
+    // absolute calibration at 12v -> 42900    3575
+    // then corrected slope at 16v -> 55790    3486
+    read_voltage = (raw_voltage / 3575 ) +  (((raw_voltage / 3575) - 12) /10) ;
 
-    bool double_needle;
+    bool double_needle = false;
 
     if (!gun.button_input || gun.locked)
         double_needle = false;
     else
         double_needle = true;
 
+    bool extending = false;
+
     if (!double_needle)
     {
         gun.battery_voltage1 = read_voltage;
-        if (millis() - last_time < 2000 && !gun.locked)
+        if (millis() - last_time < TIME_TO_HOLD_THE_DIP && !gun.locked)
         {
             gun.battery_voltage2 = saved_level;
             double_needle = true; // stretch this
+            extending = true;
         }
-
         else
             gun.battery_voltage2 = read_voltage;
     }
     else
     {
         gun.battery_voltage1 = min(read_voltage, gun.battery_voltage1);
-        saved_level = read_voltage;
+        saved_level = gun.battery_voltage1;
         last_time = millis();
     }
-
+ 
     int raw = (uint16_t)adc->adc1->analogReadContinuous();
 
     static int filtered = 0;
@@ -120,7 +125,12 @@ void io_update(void)
 
     if (gun.locked == false && gun.button_input)
     {
-        int output = constrain(map(gun.throttle_input, 0, 100, 92, 120), 92, 120);
+        int output = constrain(map(gun.throttle_input, 0, 100, 92, 106), 92, 106);  
+        //106 is 20 amps, about peak usable for levitation.  
+        // 110 is 30 amps. 
+        // Do I need to adjust this to deal with discharge?
+        // Do I want a secret mode to go max power?
+        // What is true max?  
 
         myservo.write(output);
     }
@@ -130,7 +140,7 @@ void io_update(void)
     }
 
     // handle top meter text
-    if (gun.locked == false && gun.button_input != gun.button_input_last)
+    if (gun.locked == false)
     {
         if (gun.button_input)
             gauge_throttle_text(" Active ");
@@ -150,7 +160,10 @@ void io_update(void)
     }
     else
     {
-        float result = gun.battery_voltage1 - gun.battery_voltage2;
+        static float result = 0;
+
+        if (!extending) result = gun.battery_voltage1 - gun.battery_voltage2;
+        
         if (result < 0)
             sprintf(voltage, "  %.1f ^V ", result);
         else
@@ -167,7 +180,7 @@ void io_update(void)
         gun.screensaver_on = false;
     }
 
-    if (millis() - last_motion_time > 20000 && gun.screensaver_on == false)
+    if (millis() - last_motion_time > TIME_BEFORE_SCREENSAVER && gun.screensaver_on == false)
     {
         gun.screensaver_on = true;
         gun.locked = true;
@@ -187,7 +200,7 @@ void io_update(void)
 
     // low battery alarm
 
-    if (gun.battery_voltage1 < 12.0)
+    if (gun.battery_voltage1 < 12.0 && gun.battery_voltage1 > 3)
     {
         if (0x01 & (millis() >> 7))
         {

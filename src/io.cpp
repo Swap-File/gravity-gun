@@ -22,6 +22,9 @@ PWMServo myservo; // create servo object to control a servo
 
 ADC *adc = new ADC();
 
+int max_power = 106;
+bool maximized = false;
+
 void io_init(void)
 {
     pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -50,6 +53,12 @@ void io_init(void)
     myservo.write(0);
     delay(100);
     myservo.write(90);
+
+    if (!(digitalRead(BUTTON_PIN)))
+    {
+        max_power = 128;
+        maximized = true;
+    }
 }
 
 static float saved_level = 0.0;
@@ -62,17 +71,17 @@ void io_update(void)
 
     gun.led_output = (exp(sin(millis() / 2000.0 * PI)) - 0.36787944) * 108.0;
 
-    // if (!gun.button_input_last && gun.button_input)
-    //{
-    //     gun.battery_voltage2 = gun.battery_voltage1;
-    //}
+     if (!gun.button_input_last && gun.button_input)
+    {
+         gun.battery_voltage2 = gun.battery_voltage1;
+    }
 
     static float raw_voltage = 0;
     float read_voltage;
-    raw_voltage = raw_voltage * .96 + .04 * (uint16_t)adc->adc0->analogReadContinuous();  // .04
+    raw_voltage = raw_voltage * .96 + .04 * (uint16_t)adc->adc0->analogReadContinuous(); // .04
     // absolute calibration at 12v -> 42900    3575
     // then corrected slope at 16v -> 55790    3486
-    read_voltage = (raw_voltage / 3575 ) +  (((raw_voltage / 3575) - 12) /10) ;
+    read_voltage = (raw_voltage / 3575) + (((raw_voltage / 3575) - 12) / 10);
 
     bool double_needle = false;
 
@@ -101,7 +110,7 @@ void io_update(void)
         saved_level = gun.battery_voltage1;
         last_time = millis();
     }
- 
+
     int raw = (uint16_t)adc->adc1->analogReadContinuous();
 
     static int filtered = 0;
@@ -125,12 +134,12 @@ void io_update(void)
 
     if (gun.locked == false && gun.button_input)
     {
-        int output = constrain(map(gun.throttle_input, 0, 100, 92, 106), 92, 106);  
-        //106 is 20 amps, about peak usable for levitation.  
-        // 110 is 30 amps. 
-        // Do I need to adjust this to deal with discharge?
-        // Do I want a secret mode to go max power?
-        // What is true max?  
+        int output = constrain(map(gun.throttle_input, 0, 100, 92, max_power), 92, max_power);
+        // 106 is 20 amps, about peak usable for levitation.
+        //  110 is 30 amps.
+        //  Do I need to adjust this to deal with discharge?
+        //  Do I want a secret mode to go max power?
+        //  What is true max?
 
         myservo.write(output);
     }
@@ -145,7 +154,12 @@ void io_update(void)
         if (gun.button_input)
             gauge_throttle_text(" Active ");
         else
-            gauge_throttle_text(" Ready ");
+        {
+            if (maximized)
+                gauge_throttle_text(" Turbo ");
+            else
+                gauge_throttle_text(" Ready ");
+        }
     }
 
     // handle bottom meter text
@@ -162,8 +176,9 @@ void io_update(void)
     {
         static float result = 0;
 
-        if (!extending) result = gun.battery_voltage1 - gun.battery_voltage2;
-        
+        if (!extending)
+            result = gun.battery_voltage1 - gun.battery_voltage2;
+
         if (result < 0)
             sprintf(voltage, "  %.1f ^V ", result);
         else
